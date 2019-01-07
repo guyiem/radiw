@@ -1,5 +1,17 @@
 # coding: utf-8
 
+"""
+code used in the paper "acoustic and geoacoustic inverse problems in randomly perturbed shallow water waveguide environments". Contains 3 classes :
+
+- ModeleVerticalDeterministe : modelize an homogeneous waveguide (no attenuation in the bottom, no fluctuation in the water. cf. section 3 of the paper)
+
+- ModeleVertical : modelize a random and dissipative waveguide. Inherit form ModeleVerticalDeterministe, with addition of fluctuation in water, and attenuation in sediment.
+
+- ModeleSourceAntenne : modelize a waveguide with a source and an hydrophones array
+
+"""
+
+
 import numpy as npy
 from scipy import linalg
 from scipy import sparse
@@ -14,7 +26,22 @@ import yappi
 npy.set_printoptions(linewidth=100,precision=2)
 
 class ModeleVerticalDeterministe(object):
+    """
+    modelize an homogeneous waveguide (no attenuation in the bottom, no fluctuation in the water. cf. section 3 of the paper).
 
+    Attr :
+    - zf : depth of the waveguide in meters ( positive float )
+    - ve : sound speed in water in m/s (positive float)
+    - vs : sound speed in sediment in m/s (positive float)
+    - rhoe : density of water in kg/m^3 (positive float)
+    - rhos : density of sediment in kg/m^3 (positive float)
+    - freq : frequency of our Helmholtz problem. In Hertz (positive float)
+    - choix_methode : ununsed actually. string to choose the computation method, between and exact and an approximation.
+
+    Main methods :
+     - calcul_valeurs_propres_propag() : compute the transverse wave numbers
+    """
+    
     def __init__(self,zf,ve,vs,rhoe,rhos,freq,choix_methode="exacte"):
         self.zf = zf
         self.ve = ve
@@ -153,7 +180,60 @@ class ModeleVerticalDeterministe(object):
     # fin ajout de la source
     # ----------------------------------
 
+    
+    def fonctionS(self,P):
+        lvp = self.lv*P
+        lvp2 = lvp*lvp
+        constante = self.lv/(2*P*( lvp2 + 1)**2)
+        sortie = ( 4*lvp*npy.exp(-self.zf/self.lv) * (
+            npy.cos(P*self.zf) - lvp*npy.sin(P*self.zf) )
+            + (lvp2 + 1)*( npy.sin(2*P*self.zf)
+            - lvp*npy.cos(2*P*self.zf)
+            + 2*P*self.zf)
+            + lvp*(lvp2 -3))
+        return constante*sortie
 
+
+# ---------------------------------------------
+# modèle aléatoire absorbant
+# ---------------------------------------------
+class ModeleVertical(ModeleVerticalDeterministe):
+
+    def __init__(self,zf,ve,vs,rhoe,rhos,cadb,sigma,lv,lh,freq,choix_methode="exacte"):
+        ModeleVerticalDeterministe.__init__(self,zf,ve,vs,rhoe,rhos,freq,choix_methode)
+        # paramètre pour l'absorption et l'aléatoire
+        #self.ca = cadb/(40*pi*npy.log(e))
+        self.ca = cadb/(20*pi*npy.log10(e))
+        print("vs : ",vs,'\n',4*vs/(4+self.ca**2),2*vs*self.ca/(4+self.ca**2))
+        self.sigma = sigma
+        self.lv = lv
+
+        self.lv8 = lv**8
+        self.lv7 = lv**7
+        self.lv6 = lv**6
+        self.lv5 = lv**5
+        self.lv4 = lv**4
+        self.lv3 = lv**3
+        self.lv2 = lv**2
+        
+        self.lh = lh
+        print(" ca : ",self.ca)
+        print(" début calcul des gamma ")
+        self.Gamma = self.Gamma_jl()
+        print(" fin calcul des gamma , début calcul des lambda2 ")
+        #self.Gamma = npy.array([[-2,0.5,1.5],[0.5,-3,2.5],[1.5,2.5,-4]]) #self.Gamma_jl()
+        self.Lambda2 = self.Lambda2_j()
+        print(" fin calcul des lambda2, début calcul des lambda1 ")
+        self.Lambda1 = npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])
+        print(" fin calcul des lambda1 ")
+        #self.Lambda2 = npy.zeros(self.Nm)
+        #self.Lambda1 = npy.zeros(self.Nm) #npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])1
+        print( " Lambda1 : ",npy.min(self.Lambda1),npy.max(self.Lambda1),npy.mean(self.Lambda1),npy.std(self.Lambda1))
+        print( " Lambda2 : ",npy.min(self.Lambda2),npy.max(self.Lambda2),npy.mean(self.Lambda2),npy.std(self.Lambda2))
+        print(" Gamma : ",npy.min(self.Gamma),npy.max(self.Gamma),npy.mean(self.Gamma),npy.std(self.Gamma))
+
+
+        
     def I_jl(self):        
         aj,al = npy.meshgrid(self.Kej,self.Kej)
 
@@ -177,7 +257,6 @@ class ModeleVerticalDeterministe(object):
             return Al*Al * Aj*Aj *  (1.0/npy.power((al*al)*(lv*lv)*2.0+(al*al*al*al)*(lv*lv*lv*lv)+(aj*aj)*(lv*lv)*2.0+(aj*aj*aj*aj)*(lv*lv*lv*lv)-(al*al)*(aj*aj)*(lv*lv*lv*lv)*2.0+1.0,2.0)*((al*al*al)*lv*sin(aj*zf*2.0)*(1.0/2.0)-(aj*aj*aj)*lv*sin(al*zf*2.0)*(1.0/2.0)-al*(aj*aj*aj)*(lv*lv)*2.0+(al*al*al)*aj*(lv*lv)*2.0-al*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv)*4.0+(al*al*al*al*al)*aj*(lv*lv*lv*lv)*4.0-al*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*2.0+(al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv)*2.0+(al*al*al*al*al)*(lv*lv*lv)*sin(aj*zf*2.0)*(3.0/2.0)-(aj*aj*aj*aj*aj)*(lv*lv*lv)*sin(al*zf*2.0)*(3.0/2.0)+(al*al*al*al*al*al*al)*(lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(3.0/2.0)-(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(3.0/2.0)+(al*al*al*al*al*al*al*al*al)*(lv*lv*lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(1.0/2.0)-(aj*aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(1.0/2.0)-(al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*10+(al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*10-(al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*zf+(al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv)*zf-(al*al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*zf*2.0+(al*al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*zf*2.0+al*(aj*aj*aj)*(lv*lv)*npy.power(cos(al*zf),2.0)*2.0-(al*al*al)*aj*(lv*lv)*npy.power(cos(al*zf),2.0)*2.0+al*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*4.0-(al*al*al*al*al)*aj*(lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*6.0+al*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*2.0-(al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*6.0-(al*al*al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*2.0+al*(aj*aj*aj)*(lv*lv)*npy.power(cos(aj*zf),2.0)*2.0-(al*al*al)*aj*(lv*lv)*npy.power(cos(aj*zf),2.0)*2.0+al*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*6.0-(al*al*al*al*al)*aj*(lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*4.0+al*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*6.0-(al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*2.0+al*(aj*aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*2.0+(al*al)*(aj*aj*aj)*(lv*lv*lv)*sin(al*zf*2.0)*(5.0/2.0)+(al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*sin(al*zf*2.0)*4.0+(al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(5.0/2.0)+(al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(5.0/2.0)-(al*al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(5.0/2.0)-(al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(al*zf*2.0)*(1.0/2.0)-(al*al*al)*(aj*aj)*(lv*lv*lv)*sin(aj*zf*2.0)*(5.0/2.0)-(al*al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(5.0/2.0)-(al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*4.0+(al*al*al)*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(1.0/2.0)+(al*al*al*al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(5.0/2.0)-(al*al*al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*(5.0/2.0)+al*(aj*aj*aj)*lv*zf-(al*al*al)*aj*lv*zf+(al*al)*aj*lv*sin(al*zf*2.0)-al*(aj*aj)*lv*sin(aj*zf*2.0)+(al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*2.0-(al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*2.0+(al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*6.0+(al*al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*2.0-(al*al*al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*6.0+(al*al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*6.0-(al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*2.0-(al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*6.0+(al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*2.0-(al*al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*6.0+(al*al*al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*6.0-(al*al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(aj*zf),2.0)*2.0+al*(aj*aj*aj*aj*aj)*(lv*lv*lv)*zf*3.0-(al*al*al*al*al)*aj*(lv*lv*lv)*zf*3.0+al*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*zf*3.0-(al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv)*zf*3.0+al*(aj*aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*zf-(al*al*al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv*lv)*zf+(al*al*al*al)*aj*(lv*lv*lv)*sin(al*zf*2.0)*3.0+(al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv)*sin(al*zf*2.0)*3.0+(al*al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv*lv)*sin(al*zf*2.0)-al*(aj*aj*aj*aj)*(lv*lv*lv)*sin(aj*zf*2.0)*3.0-al*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*sin(aj*zf*2.0)*3.0-al*(aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*sin(aj*zf*2.0)-al*(aj*aj*aj)*(lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0+(al*al*al)*aj*(lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0-al*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*6.0+(al*al*al*al*al)*aj*(lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*6.0-al*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*6.0+(al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*6.0-al*(aj*aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0+(al*al*al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0+(al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0-(al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*2.0+(al*al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*4.0-(al*al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*npy.power(cos(aj*zf),2.0)*4.0-(al*al)*aj*lv*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*2.0+al*(aj*aj)*lv*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*2.0-(al*al*al*al)*aj*(lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*6.0-(al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*6.0-(al*al*al*al*al*al*al*al)*aj*(lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*2.0+al*(aj*aj*aj*aj)*(lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*6.0+al*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*6.0+al*(aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*2.0-(al*al)*(aj*aj*aj)*(lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*10-(al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*14-(al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*12-(al*al)*(aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*6.0+(al*al*al*al)*(aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*10-(al*al*al*al*al*al)*(aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*npy.power(cos(aj*zf),2.0)*sin(al*zf)*2.0+(al*al*al)*(aj*aj)*(lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*10+(al*al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*12+(al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*14+(al*al*al)*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*2.0-(al*al*al*al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*10+(al*al*al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv*lv*lv)*npy.power(cos(al*zf),2.0)*cos(aj*zf)*sin(aj*zf)*6.0-(al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*4.0+(al*al*al*al)*(aj*aj)*(lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*4.0-(al*al)*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*8.0+(al*al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*8.0-(al*al)*(aj*aj*aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*4.0+(al*al*al*al)*(aj*aj*aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*12-(al*al*al*al*al*al)*(aj*aj*aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*12+(al*al*al*al*al*al*al*al)*(aj*aj)*(lv*lv*lv*lv*lv*lv*lv*lv)*cos(al*zf)*cos(aj*zf)*sin(al*zf)*sin(aj*zf)*4.0)*(-1.0/2.0))/(al*aj*(al*al-aj*aj))+al*aj*(lv*lv*lv*lv)*exp(-zf/lv)*1.0/npy.power((al*al)*(lv*lv)*2.0+(al*al*al*al)*(lv*lv*lv*lv)+(aj*aj)*(lv*lv)*2.0+(aj*aj*aj*aj)*(lv*lv*lv*lv)-(al*al)*(aj*aj)*(lv*lv*lv*lv)*2.0+1.0,2.0)*(sin(al*zf)*sin(aj*zf)+(al*al*al)*(lv*lv*lv)*cos(al*zf)*sin(aj*zf)+(aj*aj*aj)*(lv*lv*lv)*cos(aj*zf)*sin(al*zf)+(al*al)*(lv*lv)*sin(al*zf)*sin(aj*zf)+(aj*aj)*(lv*lv)*sin(al*zf)*sin(aj*zf)+al*lv*cos(al*zf)*sin(aj*zf)+aj*lv*cos(aj*zf)*sin(al*zf)+al*aj*(lv*lv)*cos(al*zf)*cos(aj*zf)*2.0-al*(aj*aj)*(lv*lv*lv)*cos(al*zf)*sin(aj*zf)-(al*al)*aj*(lv*lv*lv)*cos(aj*zf)*sin(al*zf))*4.0
 
     
-
     def I_jg(self,ij,kxj,gamma):
         #if npy.max(gamma)>self.wns2:
         #    raise ValueError( " gamma trop grand ")
@@ -264,59 +343,8 @@ class ModeleVerticalDeterministe(object):
         #if self.choix_methode=="exacte":
         
         return Ag*Ag * Aj*Aj * (ip2*( ag3*lv*saj2zf*0.5 - aj3*lv*sag2zf*0.5 - agaj3lv2*2.0 + ag3aj*self.lv2*2.0 - agaj5*self.lv4*4.0 + ag5aj*self.lv4*4.0 - agaj7*self.lv6*2.0 + ag7aj*self.lv6*2.0 + ag5*self.lv3*saj2zf*1.5 - aj5*self.lv3*sag2zf*1.5 + ag7*self.lv5*saj2zf*1.5 - aj7*self.lv5*sag2zf*1.5 + ag9*self.lv7*saj2zf*0.5 - aj9*self.lv7*sag2zf*0.5 - ag3aj5*self.lv6*10 + ag5aj3*self.lv6*10 - ag3aj5*self.lv5*zf + ag5aj3*self.lv5*zf - ag3aj7*self.lv7*zf*2.0 + ag7aj3*self.lv7*zf*2.0 + agaj3lv2*cagzf2*2.0 - ag3aj*self.lv2*cagzf2*2.0 + agaj5*self.lv4*cagzf2*4.0 - ag5aj*self.lv4*cagzf2*6.0 + agaj7*self.lv6*cagzf2*2.0 - ag7aj*self.lv6*cagzf2*6.0 - ag9aj*self.lv8*cagzf2*2.0 + agaj3lv2*cajzf2*2.0 - ag3aj*self.lv2*cajzf2*2.0 + agaj5*self.lv4*cajzf2*6.0 - ag5aj*self.lv4*cajzf2*4.0 + agaj7*self.lv6*cajzf2*6.0 - ag7aj*self.lv6*cajzf2*2.0 + agaj9*self.lv8*cajzf2*2.0 + ag2*aj3*self.lv3*sag2zf*2.5 + ag2*aj5*self.lv5*sag2zf*4.0 + ag4*aj3*self.lv5*sag2zf*2.5 + ag2*aj7*self.lv7*sag2zf*2.5 - ag4*aj5*self.lv7*sag2zf*2.5 - ag6*aj3*self.lv7*sag2zf*0.5 - ag3*aj2*self.lv3*saj2zf*2.5 - ag3*aj4*self.lv5*saj2zf*2.5 - ag5*aj2*self.lv5*saj2zf*4.0 + ag3*aj6*self.lv7*saj2zf*0.5 + ag5*aj4*self.lv7*saj2zf*2.5 - ag7*aj2*self.lv7*saj2zf*2.5 + ag*aj3*self.lv*zf - ag3aj*lv*zf + ag2aj*lv*sag2zf - agaj2*lv*saj2zf + ag3*aj3*self.lv4*cagzf2*2.0 - ag3aj5*self.lv6*cagzf2*2.0 + ag5aj3*self.lv6*cagzf2*6.0 + ag3aj7*self.lv8*cagzf2*2.0 - ag5*aj5*self.lv8*cagzf2*6.0 + ag7aj3*self.lv8*cagzf2*6.0 - ag3*aj3*self.lv4*cajzf2*2.0 - ag3aj5*self.lv6*cajzf2*6.0 + ag5aj3*self.lv6*cajzf2*2.0 - ag3aj7*self.lv8*cajzf2*6.0 + ag5*aj5*self.lv8*cajzf2*6.0 - ag7aj3*self.lv8*cajzf2*2.0 + agaj5*self.lv3*zf*3.0 - ag5aj*self.lv3*zf*3.0 + agaj7*self.lv5*zf*3.0 - ag7aj*self.lv5*zf*3.0 + agaj9*self.lv7*zf - ag9aj*self.lv7*zf + ag4*aj*self.lv3*sag2zf*3.0 + ag6*aj*self.lv5*sag2zf*3.0 + ag8*aj*self.lv7*sag2zf - ag*aj4*self.lv3*saj2zf*3.0 - ag*aj6*self.lv5*saj2zf*3.0 - ag*aj8*self.lv7*saj2zf - agaj3lv2*ccg2j2*2.0 + ag3aj*self.lv2*ccg2j2*2.0 - agaj5*self.lv4*ccg2j2*6.0 + ag5aj*self.lv4*ccg2j2*6.0 - agaj7*self.lv6*ccg2j2*6.0 + ag7aj*self.lv6*ccg2j2*6.0 - agaj9*self.lv8*ccg2j2*2.0 + ag9aj*self.lv8*ccg2j2*2.0 + ag3aj5*self.lv6*ccg2j2*2.0 - ag5aj3*self.lv6*ccg2j2*2.0 + ag3aj7*self.lv8*ccg2j2*4.0 - ag7aj3*self.lv8*ccg2j2*4.0 - ag2aj*lv*ccsgj2g*2.0 + agaj2*lv*ccsg2jj*2.0 - ag4*aj*self.lv3*ccsgj2g*6.0 - ag6*aj*self.lv5*ccsgj2g*6.0 - ag8*aj*self.lv7*ccsgj2g*2.0 + ag*aj4*self.lv3*ccsg2jj*6.0 + ag*aj6*self.lv5*ccsg2jj*6.0 + ag*aj8*self.lv7*ccsg2jj*2.0 - ag2*aj3*self.lv3*ccsgj2g*10 - ag2*aj5*self.lv5*ccsgj2g*14 - ag4*aj3*self.lv5*ccsgj2g*12 - ag2*aj7*self.lv7*ccsgj2g*6.0 + ag4*aj5*self.lv7*ccsgj2g*10 - ag6*aj3*self.lv7*ccsgj2g*2.0 + ag3*aj2*self.lv3*ccsg2jj*10 + ag3*aj4*self.lv5*ccsg2jj*12 + ag5*aj2*self.lv5*ccsg2jj*14 + ag3*aj6*self.lv7*ccsg2jj*2.0 - ag5*aj4*self.lv7*ccsg2jj*10 + ag7*aj2*self.lv7*ccsg2jj*6.0 - ag2*aj4*self.lv4*ccssgjgj*4.0 + ag4*aj2*self.lv4*ccssgjgj*4.0 - ag2*aj6*self.lv6*ccssgjgj*8.0 + ag6*aj2*self.lv6*ccssgjgj*8.0 - ag2*aj8*self.lv8*ccssgjgj*4.0 + ag4*aj6*self.lv8*ccssgjgj*12 - ag6*aj4*self.lv8*ccssgjgj*12 + ag8*aj2*self.lv8*ccssgjgj*4.0)*(-0.5))/(agaj*(ag2 - aj2)) + agaj*self.lv4*exp(-zf/lv)*ip2*(ssgj + ag3*self.lv3*csgj + aj3*self.lv3*csjg + ag2*self.lv2*ssgj + aj2*self.lv2*ssgj + ag*lv*csgj + aj*lv*csjg + agaj*self.lv2*cagzf*cajzf*2.0 - agaj2*self.lv3*csgj - ag2aj*self.lv3*csjg)*4.0
+
         
-    
-    def fonctionS(self,P):
-        lvp = self.lv*P
-        lvp2 = lvp*lvp
-        constante = self.lv/(2*P*( lvp2 + 1)**2)
-        sortie = ( 4*lvp*npy.exp(-self.zf/self.lv) * (
-            npy.cos(P*self.zf) - lvp*npy.sin(P*self.zf) )
-            + (lvp2 + 1)*( npy.sin(2*P*self.zf)
-            - lvp*npy.cos(2*P*self.zf)
-            + 2*P*self.zf)
-            + lvp*(lvp2 -3))
-        return constante*sortie
-
-
-# ---------------------------------------------
-# modèle aléatoire absorbant
-# ---------------------------------------------
-class ModeleVertical(ModeleVerticalDeterministe):
-
-    def __init__(self,zf,ve,vs,rhoe,rhos,cadb,sigma,lv,lh,freq,choix_methode="exacte"):
-        ModeleVerticalDeterministe.__init__(self,zf,ve,vs,rhoe,rhos,freq,choix_methode)
-        # paramètre pour l'absorption et l'aléatoire
-        #self.ca = cadb/(40*pi*npy.log(e))
-        self.ca = cadb/(20*pi*npy.log10(e))
-        print("vs : ",vs,'\n',4*vs/(4+self.ca**2),2*vs*self.ca/(4+self.ca**2))
-        self.sigma = sigma
-        self.lv = lv
-
-        self.lv8 = lv**8
-        self.lv7 = lv**7
-        self.lv6 = lv**6
-        self.lv5 = lv**5
-        self.lv4 = lv**4
-        self.lv3 = lv**3
-        self.lv2 = lv**2
-        
-        self.lh = lh
-        print(" ca : ",self.ca)
-        print(" début calcul des gamma ")
-        self.Gamma = self.Gamma_jl()
-        print(" fin calcul des gamma , début calcul des lambda2 ")
-        #self.Gamma = npy.array([[-2,0.5,1.5],[0.5,-3,2.5],[1.5,2.5,-4]]) #self.Gamma_jl()
-        self.Lambda2 = self.Lambda2_j()
-        print(" fin calcul des lambda2, début calcul des lambda1 ")
-        self.Lambda1 = npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])
-        print(" fin calcul des lambda1 ")
-        #self.Lambda2 = npy.zeros(self.Nm)
-        #self.Lambda1 = npy.zeros(self.Nm) #npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])1
-        print( " Lambda1 : ",npy.min(self.Lambda1),npy.max(self.Lambda1),npy.mean(self.Lambda1),npy.std(self.Lambda1))
-        print( " Lambda2 : ",npy.min(self.Lambda2),npy.max(self.Lambda2),npy.mean(self.Lambda2),npy.std(self.Lambda2))
-        print(" Gamma : ",npy.min(self.Gamma),npy.max(self.Gamma),npy.mean(self.Gamma),npy.std(self.Gamma))
-
 
     def Lambda1_j(self,ij,kxj):
         omega2 = (2*pi*self.freq)**2
