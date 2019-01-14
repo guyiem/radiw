@@ -81,8 +81,10 @@ class ModeleVerticalDeterministe(object):
         self.Aj = self.AjP()
 
     def waveNumber(self):
-        
-        omega = 2*pi*freq
+        """
+        return four floats : wave number in water, in sediments, square of wave number in water, square of wave number in sediments
+        """
+        omega = 2*pi*self.freq
         wne = omega/self.ve
         wns = omega/self.vs
         wne2 = wne*wne
