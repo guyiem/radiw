@@ -38,8 +38,25 @@ class ModeleVerticalDeterministe(object):
     - freq : frequency of our Helmholtz problem. In Hertz (positive float)
     - choix_methode : ununsed actually. string to choose the computation method, between and exact and an approximation.
 
+    We also have some "secondary attribute", computed for the main ones.
+    - wne : wave number in water (positive float)
+    - wne2 : square of wave number in water (positive float)
+    - wns : wave number in sediment (positive float)
+    - wns2 : square of wave number in sediment (positive float)
+    - Nm : number of modes
+    - Kej : propagative transverse wave number in water (array of float, length Nm)
+    - Kxj : propagative radial wave number (array of float, length Nm)
+    - Sigmaj : cf. paper (array of float, length Nm)
+    - Zetaj : cf. paper (array of float, length Nm)
+    - Aj : weigths for the modal functions (array of float, length Nm). cf. equation (A6) in the paper.
+
+
     Main methods :
-     - calcul_valeurs_propres_propag() : compute the transverse wave numbers
+     - calcul_valeurs_propres_propag() : compute the transverse wave numbers (used for computing the attribute Kej). Rely on two others functions, fct_zeros_propag() and deriv_fct_zeros_propag().
+    - AjP : compute the weights of the modal functions. cf. equation (A6) in the paper.
+    - AgR : compute, for a given vector of float gamma, the given radiatives weights. cf. equation (A10) in paper.
+
+
     """
     
     def __init__(self,zf,ve,vs,rhoe,rhos,freq,choix_methode="exacte"):
@@ -51,19 +68,20 @@ class ModeleVerticalDeterministe(object):
         self.choix_methode = choix_methode
         self.freq = freq        
         # calcul nombres d'onde
-        self.wne,self.wns,self.wne2,self.wns2 = self.waveNumber(freq)
+        self.wne,self.wns,self.wne2,self.wns2 = self.waveNumber()
         self.Kej = self.calcul_valeurs_propres_propag()
         self.Kxj = npy.sqrt( self.wne2 - self.Kej**2 )
+        self.Nm = len(self.Kxj)
         self.Kxj2 = self.Kxj * self.Kxj
         if npy.min(self.Kxj2)<self.wns2 or npy.max(self.Kxj2)>self.wne2:
             raise ValueError( " pb pour les Kxj dans le calcul propagatif ")
         self.Sigmaj = self.zf*npy.sqrt( self.wne2 - self.Kxj2 )
         self.Zetaj = self.zf*npy.sqrt( self.Kxj2 - self.wns2 )
-        self.Nm = len(self.Kxj)
         # fin calcul nombres d'onde
         self.Aj = self.AjP()
 
-    def waveNumber(self,freq):
+    def waveNumber(self):
+        
         omega = 2*pi*freq
         wne = omega/self.ve
         wns = omega/self.vs
@@ -231,6 +249,7 @@ class ModeleVertical(ModeleVerticalDeterministe):
         print( " Lambda1 : ",npy.min(self.Lambda1),npy.max(self.Lambda1),npy.mean(self.Lambda1),npy.std(self.Lambda1))
         print( " Lambda2 : ",npy.min(self.Lambda2),npy.max(self.Lambda2),npy.mean(self.Lambda2),npy.std(self.Lambda2))
         print(" Gamma : ",npy.min(self.Gamma),npy.max(self.Gamma),npy.mean(self.Gamma),npy.std(self.Gamma))
+        print(" radiatif / atténuation : ", npy.min(self.Lambda1/self.Lambda2),npy.max(self.Lambda1/self.Lambda2),npy.mean(self.Lambda1/self.Lambda2),npy.std(self.Lambda1/self.Lambda2))
 
 
         
