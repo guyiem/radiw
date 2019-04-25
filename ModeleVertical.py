@@ -519,6 +519,12 @@ class ModeleSourceAntenne(object):
             sortie[ic] = npy.sum(0.5/(zM-zm-dc) * self.mo2 / self.MV.Kxj * Aj2 * ( npy.cos(self.MV.Kej*dc)*(zM-zm-dc) - 0.5/self.MV.Kej*( npy.sin(self.MV.Kej*(2*zM-dc)) - npy.sin(self.MV.Kej*(2*zm+dc)))) )
         return sortie
 
+    def rayon_correlation_verticale(self,pcapteurs,dcapteurs):
+        c1dTheo = self.corre_verticale(pcapteurs,dc) 
+        c1dTheo = c1dTheo/c1dTheo[0]
+        rct = MesOutils.reductionAmplitudeMoitie(dc,c1dTheo)
+        return rct
+
 
 
     def indice_scintillation(self,pc1d):
@@ -557,6 +563,9 @@ class ModeleSourceAntenne(object):
         return (npy.sum(EI2) - espI2) / espI2
 
 
+
+
+    
 
 def supp_diag(M):
     if M.shape[0] != M.shape[1]:
