@@ -5,7 +5,7 @@ code used in the paper "acoustic and geoacoustic inverse problems in randomly pe
 
 - ModeleVerticalDeterministe : modelize an homogeneous waveguide (no attenuation in the bottom, no fluctuation in the water. cf. section 3 of the paper)
 
-- ModeleVertical : modelize a random and dissipative waveguide. Inherit form ModeleVerticalDeterministe, with addition of fluctuation in water, and attenuation in sediment.
+- ModeleVertical : modelize a random and dissipative waveguide. Inherit form ModeleVerticalDeterministe, with addition of fluctuation in water, and attenuation in sediment
 
 - ModeleSourceAntenne : modelize a waveguide with a source and an hydrophones array
 
@@ -22,6 +22,8 @@ from matplotlib import pyplot as plt
 import cProfile
 import pstats
 import yappi
+
+import Radiw_tools
 
 npy.set_printoptions(linewidth=100,precision=2)
 
@@ -520,9 +522,9 @@ class ModeleSourceAntenne(object):
         return sortie
 
     def rayon_correlation_verticale(self,pcapteurs,dcapteurs):
-        c1dTheo = self.corre_verticale(pcapteurs,dc) 
+        c1dTheo = self.corre_verticale(pcapteurs,dcapteurs) 
         c1dTheo = c1dTheo/c1dTheo[0]
-        rct = MesOutils.reductionAmplitudeMoitie(dc,c1dTheo)
+        rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs,c1dTheo)
         return rct
 
 
@@ -561,23 +563,6 @@ class ModeleSourceAntenne(object):
         PJL2 = (PJ*PPJ).flatten()
         EI2 = 2* (1/BJL)*PJL2 * mo4 - termesNonCroisees*(1/BJL)*PJL2 * mo4
         return (npy.sum(EI2) - espI2) / espI2
-
-
-
-
-    
-
-def supp_diag(M):
-    if M.shape[0] != M.shape[1]:
-        raise ValueError(" la matrice n'est pas carré ")
-    else:
-        m = M.shape[0]
-        Mtmp = npy.zeros((m,m-1))
-        for i in range(0,m):
-            ligne = M[i,:]
-            ligne = npy.delete(ligne,i)
-            Mtmp[i,:] = ligne
-        return Mtmp
     
 
     
