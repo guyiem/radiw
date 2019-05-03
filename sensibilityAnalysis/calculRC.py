@@ -5,19 +5,19 @@ import sys
 sys.path.append("../")
 import numpy as npy
 import pandas as pds
-import Legendre
+import ChaosPolynomials
 
 from ModeleVertical import *
 
 ne = "1000"
-echants_pds = pds.read_csv("lhcs"+str(ne)+".csv",header=None)
+echants_pds = pds.read_csv("donnees/lhcs"+str(ne)+".csv",header=None)
 echants = echants_pds.to_numpy()
-echants[:,0] = echants[:,0]*(1640-1620) + 1620
+echants[:,0] = echants[:,0]*(1600-1650) + 1650
 echants[:,1] = echants[:,1]*(1750-1650) + 1650
-echants[:,2] = echants[:,2]*(1.59-0.59) + 0.59
-echants[:,3] = echants[:,3]*(0.003-0.001) + 0.001
-echants[:,4] = echants[:,4]*(50-10) + 10
-echants[:,5] = echants[:,5]*(140-60) + 60
+echants[:,2] = echants[:,2]*(1.5-0.5) + 0.5
+echants[:,3] = echants[:,3]*(0.005-0.0001) + 0.0001
+echants[:,4] = echants[:,4]*(50-5) + 5
+echants[:,5] = echants[:,5]*(150-50) + 50
 
 pcapteurs = 50 - 0.015*npy.arange(0,640)[::-1] # position of the hydrophones
 dc =  0.015*npy.arange(0,640) # all the distance possible between the hydrophones
