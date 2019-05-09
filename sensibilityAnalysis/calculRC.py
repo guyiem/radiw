@@ -12,7 +12,7 @@ from ModeleVertical import *
 ne = "1000"
 echants_pds = pds.read_csv("donnees/lhcs"+str(ne)+".csv",header=None)
 echants = echants_pds.to_numpy()
-echants[:,0] = echants[:,0]*(1600-1650) + 1650
+echants[:,0] = echants[:,0]*(1620-1640) + 1640
 echants[:,1] = echants[:,1]*(1750-1650) + 1650
 echants[:,2] = echants[:,2]*(1.5-0.5) + 0.5
 echants[:,3] = echants[:,3]*(0.005-0.0001) + 0.0001
@@ -22,7 +22,7 @@ echants[:,5] = echants[:,5]*(150-50) + 50
 pcapteurs = 50 - 0.015*npy.arange(0,640)[::-1] # position of the hydrophones
 dc =  0.015*npy.arange(0,640) # all the distance possible between the hydrophones
 
-Freqs = [2000, 5000, 7000, 9000, 11000, 13000]
+Freqs = [1000]#2000, 5000, 7000, 9000, 11000, 13000]
 for freq in Freqs:
     RC = []
     for kl,echant in enumerate(echants):

@@ -7,19 +7,27 @@ import numpy as npy
 import pandas as pds
 from ChaosPolynomials import *
 from matplotlib import pyplot as plt
+plt.rcParams['text.latex.preamble']=[r"\usepackage{lmodern}"]
+#mpl.rc('text',usetex='True','fontsize':16)
+params = {'text.usetex' : True,
+          'font.size' : 25,
+          'font.family' : 'lmodern',
+          'text.latex.unicode': True,
+          }
+plt.rcParams.update(params)
 
 ne = "1000"
 echants_pds = pds.read_csv("donnees/lhcs"+str(ne)+".csv",header=None)
 echants = echants_pds.to_numpy()
-echants[:,0] = echants[:,0]*(1640-1620) + 1620
+echants[:,0] = echants[:,0]*(1650-1600) + 1600
 echants[:,1] = echants[:,1]*(1750-1650) + 1650
-echants[:,2] = echants[:,2]*(1.59-0.59) + 0.59
-echants[:,3] = echants[:,3]*(0.003-0.001) + 0.001
-echants[:,4] = echants[:,4]*(50-10) + 10
-echants[:,5] = echants[:,5]*(140-60) + 60
-A = npy.array([ 1620 , 1650 , 0.59 , 0.001 , 10 , 60 ])
-B = npy.array([ 1640 , 1750 , 1.59 , 0.003 , 50 , 140 ])
-nomsParams = [ "vs" , "rhos" , "epsa" , "sigma" , "lv", "l" ]
+echants[:,2] = echants[:,2]*(1.5-0.5) + 0.5
+echants[:,3] = echants[:,3]*(0.005-0.0001) + 0.0001
+echants[:,4] = echants[:,4]*(50-5) + 5
+echants[:,5] = echants[:,5]*(150-50) + 50
+A = npy.array([ 1600 , 1650 , 0.5 , 0.0001 , 5 , 50 ])
+B = npy.array([ 1650 , 1750 , 1.5 , 0.005 , 50 , 150 ])
+nomsParams = [ "vs" , "rhos" , "epsa" , "sigma" , "lv", "lh" ]
 
 
 def SobolIndex_computation(MVL,coeffs):
@@ -43,8 +51,7 @@ def SobolIndex_computation(MVL,coeffs):
 
 def SobolIndex_computation_main(freq):
     print(freq)
-    #RC = pickle.load(open("donnees/rc"+ne+"_"+str(freq)+".pick","rb"))
-    RC = pickle.load(open("rc"+ne+"_"+str(freq)+".pick","rb"))
+    RC = pickle.load(open("donnees/rc"+ne+"_"+str(freq)+".pick","rb"))
     RC = npy.array([RC]).T
 
     MVL = MultivariateLegendre(A=A,B=B)
@@ -57,18 +64,29 @@ def SobolIndex_computation_main(freq):
     
 def lecture_resultats(freqs,nomsParams):
     fig = plt.figure(1,figsize=(16,9))
-    AX = [ fig.add_subplot(1,len(freqs),k+1) for k in range(0,len(freqs)) ]
-    print(len(AX))
+    #AX = [ fig.add_subplot(1,len(freqs),k+1) for k in range(0,len(freqs)) ]
+    ax = fig.add_subplot(1,1,1)
+    ax.spines['top'].set_color('none')
+    ax.spines['bottom'].set_color('none')
+    ax.spines['left'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+    AX = [ fig.add_subplot(1,7,k+1) for k in range(0,len(freqs)) ]
     bar_width = 0.35
     index_bar = npy.arange(len(nomsParams))
     for kf,freq in enumerate(freqs):
         df = pds.read_csv("./donnees/SI_"+str(freq)+".csv",index_col=0,header=0)
         AX[kf].bar(index_bar,df["si"], bar_width, color='r',label='Sobol index')
-        AX[kf].bar(index_bar + bar_width,df["sti"], bar_width, color='g',label='Total sobol index')
+        AX[kf].bar(index_bar + bar_width,df["sti"], bar_width, color='g',label='Total Sobol index')
         AX[kf].set_xticks(index_bar+bar_width/2)
         AX[kf].set_xticklabels(nomsParams)
-        AX[kf].legend()
+        AX[kf].set_ylim(0,0.65)
+        AX[kf].set_title(str(int(freq/1000))+" kHz")
+        #AX[kf].legend()
+    ax.legend(*AX[0].get_legend_handles_labels())
+    fig.subplots_adjust(hspace=0.4,bottom=0.1,top=0.9,wspace=0.4,left=0.05,right=0.9)
     plt.show()
 
 if __name__=="__main__":
-    lecture_resultats([2000],( "vs" , "rhos" , "epsa" , "sigma" , "lv", "lh" ))
+    lecture_resultats([1000,2000,5000,7000,9000],( r"$v_s$" , r"$\rho_s$" , r"$\alpha$" , r"$\sigma$" , r"$l_v$", r"$l_h$" ))
+    #SobolIndex_computation_main(9000)
