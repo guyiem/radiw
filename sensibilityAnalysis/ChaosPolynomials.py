@@ -2,6 +2,24 @@
 import numpy as npy
 
 
+class MultiPoly(object):
+
+    def __init__(self,mpoly,degrees):
+        self.mpoly = mpoly
+        self.degrees = degrees
+
+    def degree(self):
+        return npy.sum(self.degrees)
+        
+    def eval_mvp(self,X):
+        assert ( len(self.mpoly)==len(X)), ( " longueur inégale ")
+        sortie = 1
+        Xtmp = X
+        for kp,poly in enumerate(self.mpoly):
+            sortie *= poly(Xtmp[kp])
+        return sortie
+
+
 # ------------------------------------
 # definition of 1D-Legendre polynomials
 # ------------------------------------
@@ -11,7 +29,7 @@ rnc2 = npy.sqrt(5)
 rnc3 = npy.sqrt(7)
 # renormalization constant
 
-class Legendre(object):
+class Legendre3(object):
 
     def __init__(self,a=-1,b=1):
         self.a = a
@@ -39,39 +57,22 @@ class Legendre(object):
         x = 2/(self.b-self.a)*( y - self.a) - 1
         return rnc3 * 0.5 * ( 5*x**3 - 3*x )
 
-
-class MultiPoly(object):
-
-    def __init__(self,mpoly,degrees):
-        self.mpoly = mpoly
-        self.degrees = degrees
-
-    def degree(self):
-        return npy.sum(self.degrees)
-        
-    def eval_mvp(self,X):
-        assert ( len(self.mpoly)==len(X)), ( " longueur inégale ")
-        sortie = 1
-        Xtmp = X
-        for kp,poly in enumerate(self.mpoly):
-            sortie *= poly(Xtmp[kp])
-        return sortie
     
 # -----------------------------------------
 # 6D polynomials up to order 3
 # -----------------------------------------
-class MultivariateLegendre(object):
+class MultivariateLegendre3(object):
 
     def __init__(self,A=-npy.ones(6),B=npy.ones(6)):
         self.A = A
         self.B = B
-        self.Legs = [ Legendre(a=A[k],b=B[k]) for k in range(0,6) ]
-        Polys = []
-        Polys += self.order0_mpolynomials()
-        Polys += self.order1_mpolynomials()
-        Polys += self.order2_mpolynomials()
-        Polys += self.order3_mpolynomials()
-        self.Polys = Polys
+        self.Legs = [ Legendre3(a=A[k],b=B[k]) for k in range(0,6) ]
+        # Polys = []
+        # Polys += self.order0_mpolynomials()
+        # Polys += self.order1_mpolynomials()
+        # Polys += self.order2_mpolynomials()
+        # Polys += self.order3_mpolynomials()
+        # self.Polys = Polys
               
     def order0_mpolynomials(self):
         mpoly = [ self.Legs[k].leg0 for k in range(0,6) ]
@@ -145,6 +146,41 @@ class MultivariateLegendre(object):
                     polys.append(MultiPoly(ptmp,degrees))
         return polys
 
+    # def regression(self,Xsamples,Ysamples,regularization=0.0):
+    #     nbPolys = len(self.Polys)
+    #     nbSamples = len(Xsamples)
+    #     matA = npy.zeros((nbSamples,nbPolys))
+    #     for ke,echant in enumerate(Xsamples):
+    #         for kmp,mpoly in enumerate(self.Polys):
+    #             matA[ke,kmp] = mpoly.eval_mvp(echant)
+    #     second_membre = npy.dot(matA.T,Ysamples)
+    #     matrice = npy.dot(matA.T,matA)
+    #     matrice +=  + regularization*npy.eye(matrice.shape[0])
+    #     print(npy.linalg.det(matrice))
+    #     try:
+    #         sortie = npy.linalg.solve(matrice,second_membre)
+    #     except npy.linalg.LinAlgError:
+    #         import ipdb ; ipdb.set_trace()        
+    #     return sortie
+
+
+    
+class ChaosPolynomialsModel3(object):
+
+    def __init__(self,A,B,Xsamples,Ysamples):
+        self.A = A
+        self.B = B
+        MVL = MultivariateLegendre3(A=A,B=B)
+        Polys = []
+        Polys += MVL.order0_mpolynomials()
+        Polys += MVL.order1_mpolynomials()
+        Polys += MVL.order2_mpolynomials()
+        Polys += MVL.order3_mpolynomials()
+        self.Polys = Polys
+        self.Poids = self.regression(Xsamples,Ysamples,regularization=0.0)
+        assert ( len(self.Poids) == len(self.Polys) ), ( " pb ! ")
+
+        
     def regression(self,Xsamples,Ysamples,regularization=0.0):
         nbPolys = len(self.Polys)
         nbSamples = len(Xsamples)
@@ -161,17 +197,13 @@ class MultivariateLegendre(object):
         except npy.linalg.LinAlgError:
             import ipdb ; ipdb.set_trace()        
         return sortie
-    
-# def eval_mvp(mpoly,X):
-#     assert ( len(mpoly)==len(X)), ( " longueur inégale : ",len(mpoly),len(X))
-#     sortie = 1
-#     Xtmp = X
-#     for kp,poly in enumerate(mpoly):
-#         sortie *= poly(Xtmp[kp])
-#     return sortie
 
-
-
+    def eval_model(self,sample):
+        sortie = 0
+        for kp,poids in enumerate(self.Poids):
+            sortie += poids*self.Polys[kp].eval_mvp(sample)
+        return sortie
+        
 
 # def order1_polynomials(a=-1,b=1):
 #     polys = []

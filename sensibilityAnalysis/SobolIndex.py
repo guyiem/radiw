@@ -88,5 +88,5 @@ def lecture_resultats(freqs,nomsParams):
     plt.show()
 
 if __name__=="__main__":
-    lecture_resultats([1000,2000,5000,7000,9000],( r"$v_s$" , r"$\rho_s$" , r"$\alpha$" , r"$\sigma$" , r"$l_v$", r"$l_h$" ))
-    #SobolIndex_computation_main(9000)
+    lecture_resultats([1000,2000,5000,7000,9000,11000],( r"$v_s$" , r"$\rho_s$" , r"$\alpha$" , r"$\sigma$" , r"$l_v$", r"$l_h$" ))
+    #SobolIndex_computation_main(11000)
