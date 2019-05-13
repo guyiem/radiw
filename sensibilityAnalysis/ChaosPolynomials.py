@@ -14,9 +14,8 @@ class MultiPoly(object):
     def eval_mvp(self,X):
         assert ( len(self.mpoly)==len(X)), ( " longueur inégale ")
         sortie = 1
-        Xtmp = X
         for kp,poly in enumerate(self.mpoly):
-            sortie *= poly(Xtmp[kp])
+            sortie *= poly(X[kp])
         return sortie
 
 

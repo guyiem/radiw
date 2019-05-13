@@ -63,10 +63,10 @@ CPM = pickle.load(open("ensModeles.pick","rb"))
 # SIGMA = npy.arange(pmin[3],pmax[3],0.0001)
 # LV = npy.arange(pmin[4],pmax[4],0.1)
 # DB = (VS[1]-VS[0]) * (EPSA[1]-EPSA[0]) * (SIGMA[1]-SIGMA[0]) * (LV[1]-LV[0] )
-VS = npy.linspace(pmin[0],pmax[0],100)
-EPSA = npy.linspace(pmin[2],pmax[2],100)
-SIGMA = npy.linspace(pmin[3],pmax[3],100)
-LV = npy.linspace(pmin[4],pmax[4],100)
+VS = npy.linspace(pmin[0],pmax[0],10)
+EPSA = npy.linspace(pmin[2],pmax[2],10)
+SIGMA = npy.linspace(pmin[3],pmax[3],10)
+LV = npy.linspace(pmin[4],pmax[4],10)
 DB = (VS[1]-VS[0]) * (EPSA[1]-EPSA[0]) * (SIGMA[1]-SIGMA[0]) * (LV[1]-LV[0] )
 
 # construction des échantillons
@@ -78,8 +78,9 @@ for vs in VS:
     for epsa in EPSA:
         for sigma in SIGMA:
             for lv in LV:
-                echants.append(npy.array([vs,rhos,epsa,sigma,lv,lh]))
+                echants.append([vs,rhos,epsa,sigma,lv,lh])
 
+echants = npy.array(echants)
 Cov = npy.zeros((6,6))
 for i in [0, 2, 3, 4]:
     print(i)
@@ -91,8 +92,8 @@ for i in [0, 2, 3, 4]:
         for ech_tmp in echants:
             RC = []
             for km,cpm in enumerate(CPM):
-                RC.append(cpm.eval_model(ech_tmp[0]))
-                RC = npy.array(RC)
+                RC.append(cpm.eval_model(ech_tmp))
+            RC = npy.array(RC)
             poids = npy.exp(-npy.sum((rce - RC)**2)/(2*residus2))
             int1 += ech_tmp[i]*ech_tmp[j]*poids
             int2 += ech_tmp[j]*poids
