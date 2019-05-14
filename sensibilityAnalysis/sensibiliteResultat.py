@@ -1,6 +1,7 @@
 #coding: utf-8
 
 import numpy as npy
+import numpy.matlib
 import pickle
 import pandas as pds
 import sys
@@ -44,7 +45,7 @@ rc5000 = pickle.load(open("donnees/rc1000_5000.pick","rb"))
 rc7000 = pickle.load(open("donnees/rc1000_7000.pick","rb"))
 rc9000 = pickle.load(open("donnees/rc1000_9000.pick","rb"))
 rc11000 = pickle.load(open("donnees/rc1000_11000.pick","rb"))
-rc13000 = rc11000
+rc13000 = pickle.load(open("donnees/rc1000_13000.pick","rb"))
 
 RCB = [ rc2000 , rc5000 , rc7000 , rc9000 , rc11000 , rc13000 ]
 
@@ -63,46 +64,45 @@ CPM = pickle.load(open("ensModeles.pick","rb"))
 # SIGMA = npy.arange(pmin[3],pmax[3],0.0001)
 # LV = npy.arange(pmin[4],pmax[4],0.1)
 # DB = (VS[1]-VS[0]) * (EPSA[1]-EPSA[0]) * (SIGMA[1]-SIGMA[0]) * (LV[1]-LV[0] )
-VS = npy.linspace(pmin[0],pmax[0],10)
-EPSA = npy.linspace(pmin[2],pmax[2],10)
-SIGMA = npy.linspace(pmin[3],pmax[3],10)
-LV = npy.linspace(pmin[4],pmax[4],10)
+
+npq = 100
+VS = npy.linspace(pmin[0],pmax[0],npq)
+EPSA = npy.linspace(pmin[2],pmax[2],npq)
+SIGMA = npy.linspace(pmin[3],pmax[3],npq)
+LV = npy.linspace(pmin[4],pmax[4],npq)
 DB = (VS[1]-VS[0]) * (EPSA[1]-EPSA[0]) * (SIGMA[1]-SIGMA[0]) * (LV[1]-LV[0] )
+
+RCE = npy.matlib.repmat(rce,npq**4,1)
 
 # construction des échantillons
 rhos = 1700
 lh = 100
-echants = []
+echants = npy.zeros((npq**4,6))
+compteur = 0
 print(" début construction échants ")
 for vs in VS:
     for epsa in EPSA:
         for sigma in SIGMA:
             for lv in LV:
-                echants.append([vs,rhos,epsa,sigma,lv,lh])
+                echants[compteur,:] = [vs,rhos,epsa,sigma,lv,lh]
+                compteur += 1
+print(" fin construction échants ")                
 
-echants = npy.array(echants)
 Cov = npy.zeros((6,6))
+print(" calcul termes génériques pour la quadrature ")
+RC = npy.zeros((npq**4,len(Freqs)))
+for km,cpm in enumerate(CPM):
+    RC[:,km] = cpm.eval_model(echants.T)
+poids = npy.exp(-npy.sum((RCE - RC)**2,axis=1)/(2*residus2))
+print(" fin calcul termes génériques pour la quadrature ")
 for i in [0, 2, 3, 4]:
     print(i)
     for j in [0, 2, 3, 4]:
-        int1 = 0
-        int2 = 0
-        int3 = 0
-        int4 = 0
-        for ech_tmp in echants:
-            RC = []
-            for km,cpm in enumerate(CPM):
-                RC.append(cpm.eval_model(ech_tmp))
-            RC = npy.array(RC)
-            poids = npy.exp(-npy.sum((rce - RC)**2)/(2*residus2))
-            int1 += ech_tmp[i]*ech_tmp[j]*poids
-            int2 += ech_tmp[j]*poids
-            int3 += ech_tmp[i]*poids
-            int4 += poids
-        int1 *= DB
-        int2 *= DB
-        int3 *= DB
-        int4 *= DB
+        int1 = npy.sum( echants[:,i]*echants[:,j]*poids )*DB
+        int2 = npy.sum( echants[:,j]*poids)*DB
+        int3 = npy.sum( echants[:,i]*poids )*DB
+        int4 = npy.sum( poids  )*DB
+        #import ipdb ; ipdb.set_trace()
         Cov[i,j] = (int1 - int2*int3)/int4
 
 print(npy.sqrt(Cov),"\n")
