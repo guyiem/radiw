@@ -12,7 +12,7 @@ class MultiPoly(object):
         return npy.sum(self.degrees)
         
     def eval_mvp(self,X):
-        assert ( len(self.mpoly)==len(X)), ( " longueur inégale ")
+        assert ( len(self.mpoly)==len(X)), ( " longueur inégale " , len(self.mpoly) , len(X) )
         sortie = 1
         for kp,poly in enumerate(self.mpoly):
             sortie *= poly(X[kp])
@@ -145,24 +145,6 @@ class MultivariateLegendre3(object):
                     polys.append(MultiPoly(ptmp,degrees))
         return polys
 
-    # def regression(self,Xsamples,Ysamples,regularization=0.0):
-    #     nbPolys = len(self.Polys)
-    #     nbSamples = len(Xsamples)
-    #     matA = npy.zeros((nbSamples,nbPolys))
-    #     for ke,echant in enumerate(Xsamples):
-    #         for kmp,mpoly in enumerate(self.Polys):
-    #             matA[ke,kmp] = mpoly.eval_mvp(echant)
-    #     second_membre = npy.dot(matA.T,Ysamples)
-    #     matrice = npy.dot(matA.T,matA)
-    #     matrice +=  + regularization*npy.eye(matrice.shape[0])
-    #     print(npy.linalg.det(matrice))
-    #     try:
-    #         sortie = npy.linalg.solve(matrice,second_membre)
-    #     except npy.linalg.LinAlgError:
-    #         import ipdb ; ipdb.set_trace()        
-    #     return sortie
-
-
     
 class ChaosPolynomialsModel3(object):
 
@@ -189,7 +171,7 @@ class ChaosPolynomialsModel3(object):
                 matA[ke,kmp] = mpoly.eval_mvp(echant)
         second_membre = npy.dot(matA.T,Ysamples)
         matrice = npy.dot(matA.T,matA)
-        matrice +=  + regularization*npy.eye(matrice.shape[0])
+        matrice += regularization*npy.eye(matrice.shape[0])
         print(npy.linalg.det(matrice))
         try:
             sortie = npy.linalg.solve(matrice,second_membre)
