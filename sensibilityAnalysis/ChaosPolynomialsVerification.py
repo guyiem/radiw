@@ -1,5 +1,6 @@
 #coding: utf-8
 
+from matplotlib import pyplot as plt
 import numpy as npy
 import pickle
 import pandas as pds
@@ -26,6 +27,7 @@ def data_model_check(A,B,samples,RC):
     CPM = ChaosPolynomialsModel3(A,B,samples,RC)
     print(npy.max(RC - CPM.eval_model(samples.T)))
 
+    
 def regression_check(A,B,samples):
     RC = samples[:,0] + 2*samples[:,1] + samples[:,2]**3 + samples[:,3]**2
     CPM = ChaosPolynomialsModel3(A,B,samples,RC)
@@ -54,13 +56,44 @@ def saved_datas_check():
     pmax = [ 1650 , 1750 , 1.5 , 0.005  , 50.0 , 150.0 ]
     for km,cpm in enumerate(CPM):
         print(npy.max(RCB[km]),npy.min(RCB[km]),npy.median(RCB[km]))
-        print(npy.max(npy.abs(cpm.eval_model(echants.T)-RCB[km])),"\n")
+        erreurs = npy.abs(cpm.eval_model(echants.T)-RCB[km])/RCB[km]
+        print(npy.mean(erreurs),npy.median(erreurs),npy.std(erreurs),npy.max(erreurs),npy.min(erreurs),"\n")
 
+
+
+        
+def metamodel_check():
+    nomsFichier = [ "2kHz.png" , "5kHz.png" , "7kHz.png" , "9kHz.png" , "11kHz.png", "13kHz.png" ]
+    nomsParam = [ "vs" , "rhos" , "attenuation" , "sigma" , "lv" , "lh" ]
+    vs = 1630
+    epsa = 1.09
+    lv = 30
+    lh = 100
+    sigma = 0.002
+    rhos = 1700
+    CPM = pickle.load(open("ensModeles.pick","rb"))
+    Np = 101
+    X0 = npy.array([ vs , rhos , epsa , sigma , lv , lh ])
+    for km,cpm in enumerate(CPM):
+        fig = plt.figure(km+1,figsize=(4,24))
+        for kp in range(0,6):
+            print(kp)
+            ax = fig.add_subplot(6,1,kp+1)
+            X = npy.linspace(cpm.A[kp],cpm.B[kp],Np)            
+            sortie = npy.zeros(Np)
+            for kx in range(0,Np):
+                Xtmp = npy.array([ vs , rhos , epsa , sigma , lv , lh ])
+                Xtmp[kp] = X[kx]
+                sortie[kx] = cpm.eval_model(Xtmp)
+            ax.plot(X,sortie)
+            ax.set_title(nomsParam[kp])
+        fig.subplots_adjust(hspace=0.4,bottom=0.1,top=0.9,wspace=0.5,left=0.15,right=0.97)
+        fig.savefig(nomsFichier[km])
     
         
 if __name__=="__main__":
     saved_datas_check()
-    
+    #metamodel_check()
     #########################
     # test data_model
     #########################
