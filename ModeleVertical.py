@@ -521,10 +521,16 @@ class ModeleSourceAntenne(object):
             sortie[ic] = npy.sum(0.5/(zM-zm-dc) * self.mo2 / self.MV.Kxj * Aj2 * ( npy.cos(self.MV.Kej*dc)*(zM-zm-dc) - 0.5/self.MV.Kej*( npy.sin(self.MV.Kej*(2*zM-dc)) - npy.sin(self.MV.Kej*(2*zm+dc)))) )
         return sortie
 
-    def rayon_correlation_verticale(self,pcapteurs,dcapteurs):
+    
+    def rayon_correlation_verticale(self,pcapteurs,dcapteurs,AC=False):
         c1dTheo = self.corre_verticale(pcapteurs,dcapteurs) 
         c1dTheo = c1dTheo/c1dTheo[0]
-        rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs,c1dTheo)
+        if AC:
+            print(" on garde l'auto-corrélation")
+            rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs,c1dTheo)
+        else:
+            print(" on supprime l'auto-corrélation")
+            rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs[1:],c1dTheo[1:])
         return rct
 
 
