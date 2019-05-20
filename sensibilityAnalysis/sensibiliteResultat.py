@@ -28,8 +28,8 @@ plt.rcParams.update(params)
 Freqs = npy.array([ 2000 , 5000 , 7000 , 9000 , 11000 , 13000 ])
 # chargement des rayons expérimentaux, théoriques optimaux, et aléatoires
 rce = pickle.load(open("donnees/rce_sac2016.pick","rb"))
-params_optims = npy.array([ 1610 , 1700 , 1.2 , 0.003 , 30 , 100 ])
-rco = npy.array(pickle.load(open("rco_sac2016.pick","rb")))
+params_optims, rco = pickle.load(open("./donnees/rco_sac2016_1.pick","rb"))
+rco = npy.array(rco)
 rc2000 = pickle.load(open("donnees/rc1000e_m1_2kHz.pick","rb"))
 rc5000 = pickle.load(open("donnees/rc1000e_m1_5kHz.pick","rb"))
 rc7000 = pickle.load(open("donnees/rc1000e_m1_7kHz.pick","rb"))
@@ -39,10 +39,14 @@ rc13000 = pickle.load(open("donnees/rc1000e_m1_13kHz.pick","rb"))
 RCB = npy.array([ rc2000 , rc5000 , rc7000 , rc9000 , rc11000 , rc13000 ])
 # fin chargement des rayons expérimentaux, théoriques optimaux, et aléatoires
 CPM = npy.array(pickle.load(open("donnees/ensModeles1.pick","rb")))
-pmin = CPM[0].A
-pmax = CPM[0].B
+pmin = npy.array(CPM[0].A)
+pmax = npy.array(CPM[0].B)
+print(" limites MM ")
+print(pmin)
+print(pmax)
+print( " params optims " )
+print(params_optims,"\n")
 # chargement des méta-modèles
-#CPM = npy.array(pickle.load(open("ensModeles.pick","rb")))
 
 
 # choix des fréquences
@@ -137,9 +141,6 @@ for k in range(0,6):
 
 fig = plt.figure(1,figsize=(12,12))
 compteur = 1
-#import ipdb ; ipdb.set_trace()
-
-#liste = [ [0,0] , [0,2] , [0,3] , [0,4] , [2,2] , [2,3] , [2,4] , [3,3] , [3,4] ]
 liste = [ [0,2] , [0,3] , [0,4] , [2,3] , [2,4] , [3,4] ]
 NF = [ 1 , 2 , 3 , 5 , 6 , 9 ]
 for kp,paire in enumerate(liste):
@@ -152,7 +153,10 @@ for kp,paire in enumerate(liste):
         ax = fig.add_subplot(3,3,NF[kp])
         #Y = npy.linspace(pmin[k2],pmax[k2],200)
         #XX,YY = npy.meshgrid(X,Y)
-        XX,YY = npy.mgrid[ pmin[k1]:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ] 
+        if k1 == 0:
+            XX,YY = npy.mgrid[ pmin[k1]+25:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ]
+        else:
+            XX,YY = npy.mgrid[ pmin[k1]:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ] 
         positions = npy.vstack([XX.ravel(), YY.ravel()])
         noyau = stats.gaussian_kde( echants[:10000,[k1,k2]].T , weights=poids[:10000] , bw_method="silverman")
         ZZ = npy.reshape(noyau(positions).T, XX.shape)
