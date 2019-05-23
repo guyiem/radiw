@@ -15,12 +15,15 @@ from ChaosPolynomials import *
 plt.rcParams['text.latex.preamble']=[r"\usepackage{lmodern}"]
 #mpl.rc('text',usetex='True','fontsize':16)
 params = {'text.usetex' : True,
-          'font.size' : 25,
+          'font.size' : 35,
           'font.family' : 'lmodern',
           'text.latex.unicode': True,
           }
 plt.rcParams.update(params)
+mpl.rc("xtick",labelsize=23)
+mpl.rc("ytick",labelsize=23)
 
+numModele = "6"
 
 ##########################
 # chargement des données
@@ -28,22 +31,32 @@ plt.rcParams.update(params)
 Freqs = npy.array([ 2000 , 5000 , 7000 , 9000 , 11000 , 13000 ])
 # chargement des rayons expérimentaux, théoriques optimaux, et aléatoires
 rce = pickle.load(open("donnees/rce_sac2016.pick","rb"))
-params_optims, rco = pickle.load(open("./donnees/rco_sac2016_1.pick","rb"))
+params_optims, rco = pickle.load(open("./donnees/rco_sac2016_3.pick","rb"))
+
+# debug po-3
+#params_optims[0] = 1595a
+params_optims[2] =  1.25 # 1.15
+params_optims[4] = 35
+params_optims[3] = 0.003 #0.0036
+# fin debug
+
+print(params_optims)
 rco = npy.array(rco)
-rc2000 = pickle.load(open("donnees/rc1000e_m1_2kHz.pick","rb"))
-rc5000 = pickle.load(open("donnees/rc1000e_m1_5kHz.pick","rb"))
-rc7000 = pickle.load(open("donnees/rc1000e_m1_7kHz.pick","rb"))
-rc9000 = pickle.load(open("donnees/rc1000e_m1_9kHz.pick","rb"))
-rc11000 = pickle.load(open("donnees/rc1000e_m1_11kHz.pick","rb"))
-rc13000 = pickle.load(open("donnees/rc1000e_m1_13kHz.pick","rb"))
+print(" erreur : ",npy.linalg.norm(rce-rco))
+rc2000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_2kHz.pick","rb"))
+rc5000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_5kHz.pick","rb"))
+rc7000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_7kHz.pick","rb"))
+rc9000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_9kHz.pick","rb"))
+rc11000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_11kHz.pick","rb"))
+rc13000 = pickle.load(open("donnees/rc1000e_m"+str(numModele)+"_13kHz.pick","rb"))
 RCB = npy.array([ rc2000 , rc5000 , rc7000 , rc9000 , rc11000 , rc13000 ])
 # fin chargement des rayons expérimentaux, théoriques optimaux, et aléatoires
-CPM = npy.array(pickle.load(open("donnees/ensModeles1.pick","rb")))
+CPM = npy.array(pickle.load(open("donnees/ensModeles"+str(numModele)+".pick","rb")))
 pmin = npy.array(CPM[0].A)
 pmax = npy.array(CPM[0].B)
 print(" limites MM ")
-print(pmin)
-print(pmax)
+print(*pmin)
+print(*pmax)
 print( " params optims " )
 print(params_optims,"\n")
 # chargement des méta-modèles
@@ -90,6 +103,7 @@ RC = npy.zeros((npq,len(ifreq)))
 for km,cpm in enumerate(CPM):
     RC[:,km] = cpm.eval_model(echants.T)
 poids = npy.exp(-npy.sum((RC - RCE)**2,axis=1)/(2*residus2))
+
 # étude du poids
 # nparam = 4
 # subtil = npy.ones(6)
@@ -127,7 +141,7 @@ for ki in range(0,6):
 
 print(CC)
         
-params = [ r"$v_s$" , r"$\rho_s$" , r"$\alpha$" , r"$\sigma$" , r"$l_v$" , r"$l_h$" ]
+params = [ r"$c_s$" , r"$\rho_s$" , r"$\alpha$" , r"$\sigma$" , r"$l_v$" , r"$l_h$" ]
 print("\n écart-type cas uniforme : ")
 vcu = ((pmax-pmin)**2)/12 
 for k in range(0,6):
@@ -142,35 +156,39 @@ for k in range(0,6):
 fig = plt.figure(1,figsize=(12,12))
 compteur = 1
 liste = [ [0,2] , [0,3] , [0,4] , [2,3] , [2,4] , [3,4] ]
-NF = [ 1 , 2 , 3 , 5 , 6 , 9 ]
+NF = [ 1 , 4 , 7 , 5 , 8 , 9 ]
 for kp,paire in enumerate(liste):
     print(paire)
     k1 = paire[0]
     k2 = paire[1]
     if k1 != k2:
-        #X = npy.linspace(pmin[k1],pmax[k1],101)    
-        #Y = npy.linspace(pmin[k2],pmax[k2],201)
         ax = fig.add_subplot(3,3,NF[kp])
-        #Y = npy.linspace(pmin[k2],pmax[k2],200)
-        #XX,YY = npy.meshgrid(X,Y)
-        if k1 == 0:
-            XX,YY = npy.mgrid[ pmin[k1]+25:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ]
-        else:
-            XX,YY = npy.mgrid[ pmin[k1]:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ] 
+        #if k1 ==0:
+        #    XX,YY = npy.mgrid[ pmin[k1]+30:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ]
+        #else:
+        #    XX,YY = npy.mgrid[ pmin[k1]:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ]
+        XX,YY = npy.mgrid[ pmin[k1]:pmax[k1]:101j , pmin[k2]:pmax[k2]:100j ]
         positions = npy.vstack([XX.ravel(), YY.ravel()])
         noyau = stats.gaussian_kde( echants[:10000,[k1,k2]].T , weights=poids[:10000] , bw_method="silverman")
         ZZ = npy.reshape(noyau(positions).T, XX.shape)
         ax.pcolormesh(XX,YY,ZZ)#,extent=[pmin[k1], pmax[k1], pmin[k2], pmax[k2]])
         ax.plot(params_optims[k1],params_optims[k2],'ro')
-        ax.set_title(params[k1]+" , "+params[k2])
+        if (NF[kp] == 7) | (NF[kp] == 8) | (NF[kp] == 9):
+            ax.set_xlabel(params[k1])
+        if (NF[kp] == 7) | (NF[kp] == 1) | (NF[kp] == 4):        
+            ax.set_ylabel(params[k2])
         if k2 == 2:
             plt.yticks([0.75,1.25])
-        fig.subplots_adjust(hspace=0.4,bottom=0.1,top=0.9,wspace=0.5,left=0.1,right=0.9)
+        #import ipdb ; ipdb.set_trace()
+        #ax.set_xticklabels(ax.get_xticklabels(),{'fontsize': 12})
+        #ax.set_yticklabels(ax.get_yticklabels(),{'fontsize': 12})
+        fig.subplots_adjust(hspace=0.4,bottom=0.1,top=0.9,wspace=0.5,left=0.1,right=0.95)
         #ax.set_xlim([pmin[k1], pmax[k1]])
         #ax.set_ylim([pmin[k2], pmax[k2]])
     compteur += 1
 
-plt.savefig("covMatrix.png",dpi=300)
+plt.show()#
+#plt.savefig("MS_po3_m"+str(numModele)+".png",dpi=300)
 
     
 # print(Cov,"\n")
