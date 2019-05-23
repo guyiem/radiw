@@ -376,7 +376,7 @@ class ModeleVertical(ModeleVerticalDeterministe):
         err2 = 1
         np = self.wns*1001
         compteur = 0
-        while (err1>0.01) | (err2>0.01):
+        while (err1>0.1) | (err2>0.1):
             Eta = npy.linspace(0,self.wns,int(np))
             deltaE = Eta[1]-Eta[0]
             Eta2 = Eta**2
