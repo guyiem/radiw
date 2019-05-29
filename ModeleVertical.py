@@ -226,7 +226,7 @@ class ModeleVertical(ModeleVerticalDeterministe):
         # paramètre pour l'absorption et l'aléatoire
         #self.ca = cadb/(40*pi*npy.log(e))
         self.ca = cadb/(20*pi*npy.log10(e))
-        print("vs : ",vs,'\n',4*vs/(4+self.ca**2),2*vs*self.ca/(4+self.ca**2))
+        #print("vs : ",vs,'\n',4*vs/(4+self.ca**2),2*vs*self.ca/(4+self.ca**2))
         self.sigma = sigma
         self.lv = lv
 
@@ -239,21 +239,21 @@ class ModeleVertical(ModeleVerticalDeterministe):
         self.lv2 = lv**2
         
         self.lh = lh
-        print(" ca : ",self.ca)
-        print(" début calcul des gamma ")
+        #print(" ca : ",self.ca)
+        #print(" début calcul des gamma ")
         self.Gamma = self.Gamma_jl()
-        print(" fin calcul des gamma , début calcul des lambda2 ")
+        #print(" fin calcul des gamma , début calcul des lambda2 ")
         #self.Gamma = npy.array([[-2,0.5,1.5],[0.5,-3,2.5],[1.5,2.5,-4]]) #self.Gamma_jl()
         self.Lambda2 = self.Lambda2_j()
-        print(" fin calcul des lambda2, début calcul des lambda1 ")
+        #print(" fin calcul des lambda2, début calcul des lambda1 ")
         self.Lambda1 = npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])
-        print(" fin calcul des lambda1 ")
+        #print(" fin calcul des lambda1 ")
         #self.Lambda2 = npy.zeros(self.Nm)
         #self.Lambda1 = npy.zeros(self.Nm) #npy.array([ self.Lambda1_j(ij,kxj) for ij,kxj in enumerate(self.Kxj) ])1
-        print( " Lambda1 : ",npy.min(self.Lambda1),npy.max(self.Lambda1),npy.mean(self.Lambda1),npy.std(self.Lambda1))
-        print( " Lambda2 : ",npy.min(self.Lambda2),npy.max(self.Lambda2),npy.mean(self.Lambda2),npy.std(self.Lambda2))
-        print(" Gamma : ",npy.min(self.Gamma),npy.max(self.Gamma),npy.mean(self.Gamma),npy.std(self.Gamma))
-        print(" radiatif / atténuation : ", npy.min(self.Lambda1/self.Lambda2),npy.max(self.Lambda1/self.Lambda2),npy.mean(self.Lambda1/self.Lambda2),npy.std(self.Lambda1/self.Lambda2))
+        #print( " Lambda1 : ",npy.min(self.Lambda1),npy.max(self.Lambda1),npy.mean(self.Lambda1),npy.std(self.Lambda1))
+        #print( " Lambda2 : ",npy.min(self.Lambda2),npy.max(self.Lambda2),npy.mean(self.Lambda2),npy.std(self.Lambda2))
+        #print(" Gamma : ",npy.min(self.Gamma),npy.max(self.Gamma),npy.mean(self.Gamma),npy.std(self.Gamma))
+        #print(" radiatif / atténuation : ", npy.min(self.Lambda1/self.Lambda2),npy.max(self.Lambda1/self.Lambda2),npy.mean(self.Lambda1/self.Lambda2),npy.std(self.Lambda1/self.Lambda2))
 
 
         
@@ -491,9 +491,9 @@ class ModeleSourceAntenne(object):
         self.zs = zs
         self.xa = xa
         self.aj0 = MVA.aj0(1,zs)
-        print(" début du calcul des moments d'ordre 2")
+        #print(" début du calcul des moments d'ordre 2")
         self.mo2 = self.moments_ordre2()
-        print(" fin du calcul des moments d'ordre 2")
+        #print(" fin du calcul des moments d'ordre 2")
         assert (len(self.mo2) == len(self.MV.Kxj)), (" pb sur les moments d'ordre 2")
 
     def moments_ordre2(self):
@@ -504,8 +504,8 @@ class ModeleSourceAntenne(object):
         # calcul des espérances
         aj02 = self.aj0**2
         espe = npy.dot(expM,aj02)
-        print('corre_verticale, espe :',npy.min(espe),npy.max(espe))
-        print('corre_verticale, expM :',npy.min(expM),npy.max(expM))
+        #print('corre_verticale, espe :',npy.min(espe),npy.max(espe))
+        #print('corre_verticale, expM :',npy.min(expM),npy.max(expM))
         return espe
         #return npy.sum( espe/self.MV.Kxj * (self.modesPropagatifs(zs))**2 )
 
@@ -526,10 +526,10 @@ class ModeleSourceAntenne(object):
         c1dTheo = self.corre_verticale(pcapteurs,dcapteurs) 
         c1dTheo = c1dTheo/c1dTheo[0]
         if AC:
-            print(" on garde l'auto-corrélation")
+            #print(" on garde l'auto-corrélation")
             rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs,c1dTheo)
         else:
-            print(" on supprime l'auto-corrélation")
+            #print(" on supprime l'auto-corrélation")
             rct = Radiw_tools.reductionAmplitudeMoitie(dcapteurs[1:],c1dTheo[1:])
         return rct
 
@@ -537,31 +537,31 @@ class ModeleSourceAntenne(object):
 
     def indice_scintillation(self,pc1d):
         assert len(pc1d.shape) == 1 , " les capteurs ne sont pas 1d "
-        print(" début IS ")
+        #print(" début IS ")
         # calcul de E[ |a_j|^2 |a_l|^2 ]
-        print(" Nm : ",self.MV.Nm)
-        print(" début calcul matrice B ")
+        #print(" Nm : ",self.MV.Nm)
+        #print(" début calcul matrice B ")
         matB = self.MV.matriceB()
-        print(" fin calcul matrice B ")
+        #print(" fin calcul matrice B ")
         A0,AA0 = npy.meshgrid(self.aj0,self.aj0)
         P0 = (npy.abs(A0**2)*npy.abs(AA0**2)).flatten()
-        print(" début calcul mo4 ")
+        #print(" début calcul mo4 ")
         mo4 = slinalg.expm_multiply(self.xa*matB,P0)
-        print(" fin calcul mo4 ")
+        #print(" fin calcul mo4 ")
         # fin calcul de E[ |a_j|^2 |a_l|^2 ]
 
         # calcul de E[I]^2
-        print( " début calcul E[I]^2 " )
+        #print( " début calcul E[I]^2 " )
         phiJ2 = 0
         for pc in pc1d:
             phiJ2 += self.MV.modesPropagatifs(pc)**2
         espI2 = npy.sum( 1/self.MV.Kxj * phiJ2 * self.mo2 )**2
-        print( " fin calcul E[I]^2 " )
+        #print( " fin calcul E[I]^2 " )
         #espI2 = npy.sum( self.mo2 )**2 
         # fin calcul de E[I]^2L
 
         # calcul de E[ I^2 ]
-        print( " début calcul E[I^2] " )
+        #print( " début calcul E[I^2] " )
         BJ,BBJ = npy.meshgrid(npy.abs(self.MV.Kxj),npy.abs(self.MV.Kxj))
         BJL = (BJ*BBJ).flatten()
         PJ,PPJ = npy.meshgrid(phiJ2,phiJ2)
