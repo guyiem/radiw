@@ -20,7 +20,9 @@ params = {'text.usetex' : True,
           }
 plt.rcParams.update(params)
 
+# loading the experimental correlation radius
 RCE = pickle.load(open("donnees/rce_sac2016.pick","rb"))
+
 pcapteurs =  50 - 0.015*npy.arange(0,640)[::-1]
 dc =  0.015*npy.arange(0,640) # all the distance possible between the hydrophones
 Freqs = [2000,5000,7000,9000,11000,13000]
@@ -45,9 +47,11 @@ def fonctionOpt(tup):
         MSA = ModeleSourceAntenne(MV,50,9000)
         rct = MSA.rayon_correlation_verticale(pcapteurs,dc)
         RC = npy.append(RC,rct)
-    return npy.linalg.norm(RC - RCE)
+    err = npy.linalg.norm(RC - RCE)
+    print(" erreur = ",err)
+    return err
 
-res = optimize.minimize(fonctionOpt,(16.0,1.5,0.0034*1000,2.0),bounds=((15.3,16.2),(1.2,2.0),(0.0001*1000,0.005*1000),(0.5,5)),method='L-BFGS-B',options={'gtol':0,'ftol':0.01})
+res = optimize.minimize(fonctionOpt,(16.0,1.5,0.003*1000,1.2),bounds=((15.8,16.2),(1.2,2.0),(0.0001*1000,0.005*1000),(0.5,5)),method='L-BFGS-B',options={'gtol':0,'ftol':0.001})
 #res = optimize.minimize(fonctionOpt,(16.0,1.5,0.06),bounds=((15.9,16.2),(1.2,1.6),(0.05,0.08)),method='L-BFGS-B',options={'gtol':0,'ftol':0.1})
 print(res)
 res  = res['x']
